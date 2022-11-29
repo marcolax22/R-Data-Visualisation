@@ -1,0 +1,453 @@
+---
+title: "Data Visualization with R - Session 1/2"
+authors: Marco Lax
+date: "07.12.2022"
+inspiration: Valentin Geier, Zoé Wolter
+---
+
+In the following, we will explore how to visualize data in R using the `ggplot2`-package.
+
+# 1. Getting started
+
+# 1.1 Load packages
+
+Before we start, we need to load some packages that we will need for the visualizations.
+
+- tidyverse: The `tidyverse`-package contains the core packages that belong to the tidyverse, including `dplyr` (for data manipulation) and `ggplot2`.
+
+- readxl: The `reaxl`-packagealso belongs to the tidyverse and enables us to conveniently import Excel-files (.xls and .xlsx).
+
+- lubridate: `Lubridate` is another tidyverse-package that makes working with date-time data a lot easier.
+
+- RColorBrewer: The `RColorBrewer`-package is one of the best and most famous options to create color palettes for different purposes. There is also a handy website that helps with choosing palettes for different purposes: https://colorbrewer2.org/.   
+
+- ggthemes: The `ggthemes`-package contains some beautiful additional themes, such as those used by 'The Economist' or 'The Wall Street Journal'.
+
+```{r}
+pacman::p_load(tidyverse, readxl, lubridate, RColorBrewer, ggthemes)
+```
+
+# 1.2 Import data
+
+In the following, we will visualize data on global development finance activities of the Chinese government:
+
+AidData. 2021. AidData's Global Chinese Development Finance Dataset, Version 2.0. Retrieved from https://www.aiddata.org/data/aiddatas-global-chinese-development-finance-dataset-version-2-0
+
+The data has been subset and pre-processed to reduce the size of the dataset as well as the necessity to extensively manipulate the data before the visualizations. 
+
+```{r}
+getwd()
+setwd("/Users/Marco/Documents/R Data Visualization/data")
+
+aiddata_preprocessed <- read_csv("AidData_CDF_2021_preprocessed.csv")
+
+```
+
+# 1.3 First glimpse at the data
+
+Executed the following three commands provides us with a first glimpse at the data and its structure.
+
+```{r}
+head(aiddata_preprocessed)
+summarise(aiddata_preprocessed)
+str(aiddata_preprocessed)
+names(aiddata_preprocessed)
+```
+
+# 1.4 Some basic data wrangling
+
+Before diving into the visualizations, we will do some data wrangling to create two datasets that are then ready for some nice visualizations.
+
+```{r}
+# Subsetting the dataset
+aiddata_red <- aiddata_preprocessed %>%
+  
+# With `drop_na()` we drop all cases for which we do not know the actual amount of financing
+  
+  drop_na(amount) %>%
+  
+# Using functions provided by the `lubridate` -package, we transform the values in the year-columns into a date format
+  
+  mutate(commitment_year = ymd(commitment_year, truncated = 2L),
+         implementation_year = ymd(implementation_year, truncated = 2L),
+         completion_year = ymd(completion_year, truncated = 2L),
+         
+# We also divide the values in the column indicating the amount of money spent on individual projects by 1 billion to make handling and visualizing the data easier.
+
+         amount = amount/1000000000)
+
+# Creating a dataset that contains the number of projects, the amount of development financing and the average amount of development financing per year
+
+aiddata_yearly <- aiddata_red %>%
+  
+# We group the data by the `commitment_year`-column which indicates in which year the Chinese government committed to financing a certain project
+  
+  group_by(commitment_year) %>%
+  
+# First, we calculate the number of projects by year 
+  
+  summarise(n_projects = n(),
+            
+# Then, we calculate the total amount of development financing the Cinese government committed to spending per year
+
+            amount_total = sum(amount),
+
+# And lastly, we calculate the mean amount of development finance committed to per year
+
+            amount_mean = mean(amount))
+```
+
+# 2. First steps
+
+# 2.1 Setting up a plot w/ ggplot2
+
+Set up a ggplot using `ggplot()` by piping (%>%) the 'chn_aid_red' data set into the function's `data` argument. 
+
+```{r}
+aiddata_yearly %>% 
+  ggplot()
+```
+
+This code chunk creates a blank canvas in the 'Plots' panel of RStudio, since we have yet to specify the arguments to be used for the plotting. 
+We can do this by specifying the `mapping` argument using the `aes()` helper function.
+
+# 2.2 Specifying the parameters
+
+We now want the x-values of the plot to indicate the year in which the Chinese government committed to delivering the aid finances (`commitment_year`), and the y-values to represent the number of projects the Chinese government committed to finance (`n_projects`).
+
+```{r}
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = n_projects))
+```
+
+The updated plot should now contain axis labels, tick marks and labels, and grid lines. It's time to add some geometric shapes to show the data. 
+
+# 2.3 Adding geometric shapes
+
+The ggplot2-package offers a wide range of different geometric shapes. In the following we will focus on bar plots (e.g. `geom_bar`, `geom_col`), line plots (e.g. `geom_line`, `geom_smooth`, `geom_area`), and scatterplots (e.g. `geom_point`). 
+
+# 2.3.1 Bar plots with geom_col
+
+We will now visualize a bar plot with the x-values representing the commitment year (`commitment_year`), and the y-values representing the number of projects committed to (`n_projects`). Therefore we simply add a function specifying the desired geometric shape, in this case `geom_col`, with a `+`.
+
+```{r}
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = n_projects)) +
+  geom_col()
+```
+
+# 2.3.2 Scatterplots
+
+`Geom_point` allows us to visualize a simple scatterplot with the data points being dependent on the values on the x- and the y-axis.
+
+```{r}
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = n_projects)) +
+  geom_point() 
+```
+
+Both the bar plot as well as the line plots show an upward trend in the financial aid commitments of the Chinese government between 2000 and 2017. Often times, line plots are a handy tool to display such trends.
+
+# 2.3.3 Line plots with geom_line und geom_smooth
+
+With `geom_line` we can visualize a simple line plot, since the function connects observations in order of the variable on the x-axis. In turn, geom_smooth displays smoothed conditional means that can help us to identify trends in data. By default, it also shows confidence intervals - these can be omitted using the `se = FALSE`- command.
+
+```{r}
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = n_projects)) +
+  geom_point() +
+  geom_line() +
+  geom_smooth(se = FALSE)
+```
+
+# 2.4 Exercise No. 1
+
+Now, start creating some plots yourself. Again, we want to display the years on the x-axis. On the y-axis, we now want to visualize the amount of development finances committed to by the Chinese government (`amount_total`).  
+
+```{r}
+# Bar plot
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = amount_total)) +
+  geom_col()
+
+# Scatterplot
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = amount_total)) +
+  geom_point() 
+
+# Line plot
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = amount_total)) +
+  geom_point() +
+  geom_line() +
+  geom_smooth(se = FALSE)
+```
+
+If you have finished early, feel free play around with some other geometric shapes. To have a glimpse at all the possibilities ggplot2 offers, take a look at the 'Cheatsheet' provided in the folder.
+
+```{r}
+# A step plot could be a handy visualization for the association between year and project number, or not?
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = n_projects)) +
+  geom_step()
+
+# Maybe an area plot could be an alternative to the line plot for displaying the changes in the amount of aid transfers over time? 
+aiddata_yearly %>% 
+  ggplot(mapping = aes(x = commitment_year, 
+                       y = amount_total)) +
+  geom_area()
+
+```
+
+# 3. Adding information and first refinements
+
+# 3.1 Adding information 
+
+We now turn to a more fine-grained version of the dataset provided by AidData which, besides the sole number of projects or the amount of aid, contains quite some interesting additional information such as the recipient, the recipient region, the intent or the targeted sector.
+
+# 3.1.1 Colors
+
+There are two commands with which you can introduce colors into your plot: `color =` and `fill =`, both of which have to be specified in the `aes()`-function. While `color =` colorizes lines according to a given parameter, `fill =` colorizes/fills respective areas in the plot. In the following, we will use the `fill =`-command since it is more suitable for bar plots. The usage of `color =` is analogous to `fill =`.
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + # note that the 'fill ='-command is included in the 'aes()'-function
+  geom_col()
+```
+
+# 3.1.2 Facets
+
+We can introduce even more information into our plot by using the `facet_wrap`-function. For each manifestation of a discrete variable that we specify by using `~ ` inside `facet_wrap()`, a separate panel is created in the plot.
+By default, `facet_wrap()` uses the same scale for each panel. Often times, this is appropriate and makes comparisons easier. In our case, however, the amounts spent for `Representational` purposes are so small, that the respective panel needs a different scale on the y-axis. By setting `scale = "free"`, `ggplot2` uses the most appropriate scale for each panel
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  facet_wrap(~ intent, 
+             scale = "free")
+```
+
+# 3.2 First refinements
+
+The plots we have created so far might contain and convey most of the relevant information. But they are not very informative and, above all, quite ugly.
+
+# 3.2.1 Themes
+
+Themes can help us to easily alter the looks of our plot. Luckily, `ggplot2` already contains some prefabricated themes such as `theme_classic()` or `theme_minimal()` which help us to brush up the looks of our plot. There is also the `ggthemes`-package which contains some beautiful additional themes, such as those used by 'The Economist' or 'The Wall Street Journal'.  
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  theme_minimal()
+```
+
+# 3.2.2 Adding labs
+
+The plot itself is beginning to look quite nice. However, without appropriate annotation, it is still hard to grasp what it is about. To fix this issue, we use `labs()` to add titles for the axes, a plot title and subtitle, and a caption.  
+   
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  labs(x = "Year", # renaming the x-axis
+       y = "Aid (in billion 2017 US$)", # renaming the y-axis
+       title = "Chinese development financing", # adding a title to the plot
+       subtitle = "'By region between 2000 and 2017", # adding a subtitle to the plot
+       caption = "Source: AidData (2021)") + # adding a caption to the plot
+theme_minimal() 
+```
+
+# 3.2.3 Manually adjusting the theme
+
+Despite using `theme_minimal()`, there remain a number of tweaks that could make our plot look even nicer. We can thus use `theme()` AFTER `theme_minimal()` to make some manual adjustments. These include changes to the look of both title (`plot.title`) and subtitle(`plot-subtitle`), the removal of the legend title (`legend.title`) and it's relocation (`legend.position`) to the bottom of the plot. To simply omit (NON-DATA) components of the plot, we use `element_blank`, while making changes to text components requires the command `element_text`.
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+       title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017",
+       caption = "Source: AidData (2021)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 30), # font face becomes "bold", resizes the text
+        plot.subtitle = element_text(face = "italic", size = 15), # font face becomes "italic", resizes the text
+        legend.title = element_blank(), # omits the legend title
+        legend.position = "bottom") + # relocates the legend to the bottom of the plot
+  guides(fill = guide_legend(nrow = 1)) # additional command setting the number of rows in the legend to one (we use the 'fill =' because the color, and thus the legend, are based on the 'fill = recipient_region'-command above)
+```
+
+There are more functions that are used for making changes to the theme. With `element_rect` we can change the looks of borders and backgrounds (e.g. the background of the plot), while `element_lines` allows us to make changes to (NON-DATA) lines in the plot (e.g. axis or grid lines).
+
+# 3.3 Exercise No. 2
+
+Please create a bar plot with `geom_col()` that, analogously to the plot above, displays the amount of aid per year, however, now by sector instead of region.
+
+```{r}
+aiddata_red %>% 
+# First, specify the aesthetics to be displayed in the plot
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = sector)) + 
+# Specify the geometric shape to be used for the plot (bar plot)
+  geom_col() + 
+# Now, specify the axis titles (x and y) as well as title, subtitle and caption (careful: now the colors no longer      represent regions, but the sector of the aid transfer)
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+       title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017",
+       caption = "Source: AidData (2021)") +
+# Select a theme that builds the basis for our polishing
+  theme_minimal() +
+# Now, refine the look of the title, the subtitle and the axis titles (hint: 'axis.title ='), omit the legend title     and place the legend at the bottom of the plot
+  theme(plot.title = element_text(face = "bold", size = 30), 
+        plot.subtitle = element_text(face = "italic", size = 15),
+        legend.title = element_blank(), 
+        legend.position = "bottom",
+        axis.title = element_text(face = "bold")) + 
+# Last but not least, set the number of rows in the legend to two
+  guides(fill = guide_legend(nrow = 2)) 
+```
+If you have finished early, feel free to explore and modify some extra themes that are provided by the `ggthemes`-package such as `theme_wsj()`, `theme_economist()` or `theme_fivethirtyeight()`.
+Below, switching from `theme_minimal` to `theme_wsj` has totally messed up the plot. Can find a way to modify the code in such a way, that it looks decent again?
+Hint: besides altering the given functions, also take a look at `plot-caption =` and `legend.text =` (and how to alter text sizes there).
+
+```{r}
+aiddata_red %>% 
+ ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = sector)) + 
+  geom_col() + 
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+       title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017",
+       caption = "Source: AidData (2021)") +
+  theme_wsj() +
+  theme(plot.title = element_text(face = "bold", size = 30), 
+        plot.subtitle = element_text(face = "italic", size = 15),
+        legend.title = element_blank(), 
+        legend.position = "bottom",
+        axis.title = element_text(face = "bold")) + 
+  guides(fill = guide_legend(nrow = 2))
+
+# Possible solution
+aiddata_red %>% 
+ ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = sector)) + 
+  geom_col() + 
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+      title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017",
+       caption = "Source: AidData (2021)") +
+  theme_wsj() +
+  theme(plot.title = element_text(face = "bold", size = 25), 
+        plot.subtitle = element_text(face = "italic", size = 10),
+        plot.caption = element_text(size = 8),
+        legend.title = element_blank(), 
+        legend.position = "bottom",
+        legend.text = element_text(size = 6),
+        axis.title = element_text(face = "bold", size = 8)) + 
+  guides(fill = guide_legend(nrow = 2))
+```
+
+# 4. Altering scales
+
+Two important parameters that `ggplot2` allows us to alter are axis scales (x- and y-axis) as well as color scales that define which colors are used in the plot.
+
+# 4.1 Axis scales
+
+To begin with, we can make changes to the x-axis by using the `scale_x_...`-functions. Depending on the variable displayed on the x-axis, we use different specifications of the function: e.g. `scale_x_discrete` for discrete variables, `scale_x_continuous` for continuous variables, `scale_x_date` for dates, and so on ... The exact same applies for the `scale_y_...`-functions (e.g. `scale_y_discrete`, ...).
+These functions now allow us to modify the limits of the scales (`limits =` or `expand =`) or the breaks to be displayed (e.g. `breaks =` or `n.breaks =`).
+Depending on which of the functions we have to pick to fit our variables, we might have to supply slightly different arguments. E.g. see the arguments provided in the `scale_x_date`-function, where we use `date_breaks =` instead of `breaks =`.
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+       title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017",
+       caption = "Source: AidData (2021)") +
+  scale_x_date(date_breaks = "1 year",  
+               date_labels = "%Y", 
+               expand = expansion(mult = c(0.01, 0.01))) + 
+  scale_y_continuous(n.breaks = 5, 
+                     limits = c(0, 100)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", 
+                                  size = 30), 
+        plot.subtitle = element_text(face = "italic", 
+                                     size = 15), 
+        legend.title = element_blank(), 
+        legend.position = "bottom") + 
+  guides(fill = guide_legend(nrow = 1)) 
+```
+
+# 4.2 Color scales
+
+As we have seen so far, when we specify colors in the `aes`-function (in our case with the `fill =`-command), `ggplot2` chooses a certain set of colors by default to execute the command. However, colors are a meaningful aspect of data visualization. Thus, to make our visualization as informative as possible, we should manually adjust the color palette to our needs and the data. For that purpose we can use the functions `scale_color_manual` or `scale_fill_manual` respectively.
+
+Two famous coloring packages are `RColorBrewer` and `viridisLite` which provide color palettes that are designed for different purposes and data types (such as discrete vs. continuous variables). `RColorBrewer` even comes along with a website (https://colorbrewer2.org/) that helps us find the appropriate color palette for our visualization attempt. The two packages are put to use by replacing `scale_color_manual`/`scale_fill_manual` with `scale_color_brewer`/`scale_fill_brewer` or `scale_color_viridis`/`scale_fill_viridis`. 
+
+In the following, we have used `RColorBrewer` and a color palette that, thanks to its contrasts, is especially suitable for qualitative scales ("Set1").
+
+```{r}
+aiddata_red %>% 
+  ggplot(aes(x = commitment_year,
+             y = amount,
+             fill = region)) + 
+  geom_col() + 
+  labs(x = "Year",
+       y = "Aid (in billion 2017 US$)",
+       title = "Chinese development financing",
+       subtitle = "By region between 2000 and 2017", 
+       caption = "Source: AidData (2021)") +
+  scale_x_date(date_breaks = "1 year",  
+               date_labels = "%Y", 
+               expand = expansion(mult = c(0.01, 0.01))) + 
+  scale_y_continuous(n.breaks = 5, 
+                     limits = c(0, 100)) +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", 
+                                  size = 30), 
+        plot.subtitle = element_text(face = "italic", 
+                                     size = 15), 
+        legend.title = element_blank(), 
+        legend.position = "bottom") + 
+  guides(fill = guide_legend(nrow = 1))  
+```
+
+# 4.4 Exercise No. 3   
+
+```{r}
+#tbd
+```
+

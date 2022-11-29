@@ -1,0 +1,11 @@
+---
+title: "Session 01 - Workshop Datenvisualisierung mit R"
+author: "..."
+date: "January 2022"
+output: html_document
+---
+
+```{r}
+
+```
+
