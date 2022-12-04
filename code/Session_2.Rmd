@@ -1,0 +1,199 @@
+---
+title: "Workshop"
+author: "Leslie Fischer"
+date: "23/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# 1. Preparation 
+
+Clear the workspace
+```{r}
+rm(list = ls()) 
+```
+
+Set the working directory to the folder containing the workshop files:
+```{r}
+setwd("~/Desktop/Workshop")
+```
+
+Install.packages(x) 
+```{r}
+x <- c("readxl", "sf", "igraph")
+```
+
+Load the required packages 
+```{r results='hide', message=FALSE, warning=FALSE}
+lapply(x, library, character.only = TRUE) 
+```
+
+Load data
+```{r}
+library(readxl)
+nodes <- read_excel("NODES.xlsx")
+links <- read_excel("EDGES.xlsx")
+```
+
+Pie chart 
+```{r}
+
+pie(nodes$visits, labels=nodes$country, col = rainbow(length(nodes$visits)), main= "Visits")
+```
+
+
+# 2. Spatial Data 
+Adapted from 
+
+1. Weidmann (forthcoming): Data Management for Social Scientists
+
+2. Ward & Gleditsch (2008): Spatial Regression Models
+
+Right now, R treats our data as a regular data frame, which is why we convert it into a spatial object. "coords=c(longitude, latitude)" requires us to specify the names of the columns where the spatial coordinates are stored.
+
+Load sf package
+```{r}
+library(sf)
+```
+
+Enable dataset
+```{r}
+capital <- st_as_sf(nodes, coords = c("longitude_cap", "latitude_cap"), crs = 4326)
+```
+
+Check
+```{r}
+print(capital, n=4)
+```
+
+Load spatial data set for Europe
+```{r}
+europe <- st_read(file.path("NUTS_RG_60M_2021_4326"), crs=4326)
+```
+
+Plot spatial data set and add coordinates of capitals
+```{r}
+plot(st_geometry(europe), col="lightgrey")
+plot(st_geometry(capital), pch=16, col = "red", add=T)
+```
+
+
+Too large: subset only the countries we are interested in: DE, IT, SE, PL
+```{r}
+better <- europe[europe$CNTR_CODE=="DE" | europe$CNTR_CODE=="IT" |
+                 europe$CNTR_CODE=="PL"| europe$CNTR_CODE=="SE",]
+```
+
+Plot again
+```{r}
+plot(st_geometry(better), col="lightgrey")
+plot(st_geometry(capital), pch=16, col = "red", add=T)
+```
+
+Now we want to color countries by number of visits. We therefore merge our data set with a data set which includes the information on the number of visits.
+```{r}
+better<- merge(better, nodes[,c("visits", "CNTR_CODE")], by = "CNTR_CODE", all = TRUE) 
+```
+
+How many features are in each category or level?
+```{r}
+summary(better$visits)
+```
+
+Convert to factor
+```{r}
+better$visits <- as.factor(better$visits)
+class(better$visits)
+```
+
+Count the number of unique values or levels
+```{r}
+length(levels(better$visits))
+```
+
+Create a color palette of 6 colors - one for each factor level
+```{r}
+road_palette <- c("grey80", "grey60", "grey40", "grey20" )
+road_palette
+```
+
+Create a vector of colors - one for each feature in the vector object according to its attribute value
+```{r}
+all_road_colors <- c("grey80", "grey60", "grey40", "grey20")[better$visits]
+head(all_road_colors)
+```
+
+Plot the lines data, apply a different color to each factor level. Then add the coordinates of the capitals. When adding the legend, x="right" specifies the location of the legend. cex is the font size. After "fill=" we name the color palette we used to fill our objects with.
+```{r}
+plot(st_geometry(better), col= all_road_colors)
+plot(st_geometry(capital), pch=16, col = "red", add=T)
+legend(x = "right", c("  6 visits", "10 visits", "13 visits", "19 visits" ), cex = .5, fill = road_palette)
+```
+
+
+# 3. Network Data 
+Adapted from: Ognyanova (2016): https://kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
+
+Load package
+```{r}
+library(igraph)
+```
+
+Enable data set
+```{r}
+net <- graph_from_data_frame(d=links, vertices=nodes, directed=T) 
+```
+
+# Plot network
+
+edge.arrow.size=.4: size of arrow
+
+vertex.color="lightgrey": node color 
+
+vertex.label=V(net)$id: specifies label of node
+
+vertex.label.font=2: font type for the label (1: Times new Roman, 2: bold, 3: italic+, 4: italic+bold)
+
+vertex.label.color="black": color of label
+
+vertex.size=40: size of node
+
+vertex.label.cex=.7: size of label within node
+
+edge.color="gray85": edge color
+
+```{r}
+plot(net, edge.arrow.size=.4, vertex.color="lightgrey", vertex.label=V(net)$id, 
+     vertex.label.font=2, vertex.label.color="black", vertex.size=50,
+     vertex.label.cex=.7, edge.color="gray85")
+```
+
+Set node (/vertix) size based on number of visits
+```{r}
+V(net)$size <- V(net)$visits*3
+```
+
+Plot (take out vertex.size=40)
+```{r}
+plot(net, edge.arrow.size=.4, vertex.color="lightgrey", vertex.label=V(net)$id, 
+     vertex.label.font=2, vertex.label.color="black", 
+     vertex.label.cex=.5, edge.color="gray85")
+```
+
+
+## BONUS: 
+Color by long distance (>1,000 km)
+```{r}
+colrs <- E(net)$color <- ifelse( E(net)$dummy == "1", "tomato", "gold")
+```
+
+Plot and add legend
+```{r}
+plot(net, edge.arrow.size=.4, vertex.color="lightgrey", vertex.label=V(net)$id, 
+     vertex.label.font=2, vertex.label.color="gray40", 
+     vertex.label.cex=.5)
+legend(x=-1.1, y=-1.5, c("Long-distance"), pch=21,
+       col="#777777", pt.bg=colrs, pt.cex=2.5, bty="n", ncol=1)
+```
