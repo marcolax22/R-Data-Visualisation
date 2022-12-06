@@ -36,10 +36,7 @@ AidData. 2021. AidData's Global Chinese Development Finance Dataset, Version 2.0
 The data has been subset and pre-processed to reduce the size of the dataset as well as the necessity to extensively manipulate the data before the visualizations. 
 
 ```{r results='hide', message=FALSE, warning=FALSE}
-getwd()
-setwd("/Users/Marco/Documents/R Data Visualization/data")
-
-aiddata_preprocessed <- read_csv("AidData_CDF_2021_preprocessed.csv")
+aiddata_preprocessed <- read_csv("../data/AidData_CDF_2021_preprocessed.csv")
 
 ```
 
@@ -110,12 +107,6 @@ aiddata_subset <- aiddata_preprocessed %>%
 
 ggplot(aiddata_subset, aes(y = amount_total, x= region, group = region)) + geom_boxplot(outlier.shape = NA)   + coord_cartesian(ylim = c(0,60))
     
-```
-
-###
-
-```{r}
-
 ```
 
 # 2. First steps
@@ -192,24 +183,13 @@ Now, start creating some plots yourself. Again, we want to display the years on 
 
 ```{r}
 # Bar plot
-aiddata_yearly %>% 
-  ggplot(mapping = aes(x = commitment_year, 
-                       y = amount_total)) +
-  geom_col()
+
 
 # Scatterplot
-aiddata_yearly %>% 
-  ggplot(mapping = aes(x = commitment_year, 
-                       y = amount_total)) +
-  geom_point() 
+
 
 # Line plot
-aiddata_yearly %>% 
-  ggplot(mapping = aes(x = commitment_year, 
-                       y = amount_total)) +
-  geom_point() +
-  geom_line() +
-  geom_smooth(se = FALSE)
+
 ```
 
 If you have finished early, feel free play around with some other geometric shapes. To have a glimpse at all the possibilities ggplot2 offers, take a look at the 'Cheatsheet' provided in the folder.
@@ -327,29 +307,7 @@ There are more functions that are used for making changes to the theme. With `el
 Please create a bar plot with `geom_col()` that, analogously to the plot above, displays the amount of aid per year, however, now by sector instead of region.
 
 ```{r}
-aiddata_red %>% 
-# First, specify the aesthetics to be displayed in the plot
-  ggplot(aes(x = commitment_year,
-             y = amount,
-             fill = sector)) + 
-# Specify the geometric shape to be used for the plot (bar plot)
-  geom_col() + 
-# Now, specify the axis titles (x and y) as well as title, subtitle and caption (careful: now the colors no longer      represent regions, but the sector of the aid transfer)
-  labs(x = "Year",
-       y = "Aid (in billion 2017 US$)",
-       title = "Chinese development financing",
-       subtitle = "By region between 2000 and 2017",
-       caption = "Source: AidData (2021)") +
-# Select a theme that builds the basis for our polishing
-  theme_minimal() +
-# Now, refine the look of the title, the subtitle and the axis titles (hint: 'axis.title ='), omit the legend title     and place the legend at the bottom of the plot
-  theme(plot.title = element_text(face = "bold", size = 30), 
-        plot.subtitle = element_text(face = "italic", size = 15),
-        legend.title = element_blank(), 
-        legend.position = "bottom",
-        axis.title = element_text(face = "bold")) + 
-# Last but not least, set the number of rows in the legend to two
-  guides(fill = guide_legend(nrow = 2)) 
+
 ```
 If you have finished early, feel free to explore and modify some extra themes that are provided by the `ggthemes`-package such as `theme_wsj()`, `theme_economist()` or `theme_fivethirtyeight()`.
 Below, switching from `theme_minimal` to `theme_wsj` has totally messed up the plot. Can find a way to modify the code in such a way, that it looks decent again?
