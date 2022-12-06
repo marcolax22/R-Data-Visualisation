@@ -47,7 +47,7 @@ pie(nodes$visits, labels=nodes$country, col = rainbow(length(nodes$visits)), mai
 # 2. Spatial Data 
 Adapted from 
 
-1. Weidmann (forthcoming): Data Management for Social Scientists
+1. Weidmann (2022): Data Management for Social Scientists
 
 2. Ward & Gleditsch (2008): Spatial Regression Models
 
@@ -68,7 +68,7 @@ Check
 print(capital, n=4)
 ```
 
-Load spatial data set for Europe
+Load spatial data set for Europe (Source: Eurostat https://ec.europa.eu/eurostat/web/gisco/)
 ```{r}
 europe <- st_read(file.path("NUTS_RG_60M_2021_4326"), crs=4326)
 ```
@@ -113,7 +113,7 @@ Count the number of unique values or levels
 length(levels(better$visits))
 ```
 
-Create a color palette of 6 colors - one for each factor level
+Create a color palette of 4 colors - one for each factor level
 ```{r}
 road_palette <- c("grey80", "grey60", "grey40", "grey20" )
 road_palette

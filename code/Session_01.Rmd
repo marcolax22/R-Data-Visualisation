@@ -101,16 +101,14 @@ aiddata_yearly <- aiddata_red %>%
 ### Boxplot
 
 ```{r}
-aiddata_subset <- aiddata_red %>% 
+aiddata_subset <- aiddata_preprocessed %>% 
+  mutate( amount = amount/10000000) %>% 
   group_by(region) %>% 
     summarise(amount_total = amount,
-              country = country,
-              year = commitment_year) %>% 
-    filter(country == "Afghanistan")
+              region = region,
+              year = commitment_year)
 
-ggplot(aiddata_subset, aes(y = amount_total, group = country)) + geom_boxplot(outlier.shape = NA) +
-  coord_cartesian(ylim = c(0,0.015))
-
+ggplot(aiddata_subset, aes(y = amount_total, x= region, group = region)) + geom_boxplot(outlier.shape = NA)   + coord_cartesian(ylim = c(0,60))
     
 ```
 
